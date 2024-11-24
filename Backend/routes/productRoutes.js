@@ -5,7 +5,7 @@ const router = express.Router();
 // Add product route
 router.post('/add-product', async (req, res) => {
   const {
-    name, description, price, discount, category, subcategory, stock, images, sizeChart, isAvailable, colors, sizes, productCode
+    name, description, price, discount, category, subcategory, stock, images, sizeChart, isAvailable, colors, sizes, productCode , isBestSeller
   } = req.body;
 
   console.log('Request Data:', req.body); // Log the request for debugging
@@ -22,6 +22,7 @@ router.post('/add-product', async (req, res) => {
       images,
       sizeChart,
       isAvailable,
+      isBestSeller,
       availableColors: colors || [],
       availableSizes: sizes || [],
       productCode, // Directly use the productCode from the request

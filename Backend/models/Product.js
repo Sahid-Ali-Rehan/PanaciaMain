@@ -1,6 +1,4 @@
 const mongoose = require('mongoose');
-
-
 const productSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: { type: String, required: true },
@@ -14,7 +12,9 @@ const productSchema = new mongoose.Schema({
   isAvailable: { type: Boolean, default: true },
   availableColors: { type: [String], default: [] },
   availableSizes: { type: [String], default: [] },
-  productCode: { type: String, unique: true, required: true }, // Add productCode field
+  productCode: { type: String, unique: true, required: true },
+  isBestSeller: { type: Boolean, default: false },
+  reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }], // Add this
 });
 
 const Product = mongoose.model('Product', productSchema);
