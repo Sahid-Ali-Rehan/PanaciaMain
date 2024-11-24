@@ -5,6 +5,8 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
+const productRoutes = require('./routes/productRoutes');
+const Product = require('./models/Product');
 require('dotenv').config();
 
 const app = express();
@@ -21,6 +23,8 @@ mongoose.connect(process.env.MONGODB_URI)
     console.log("MongoDB connection error:", err);
     res.status(500).json({ message: "Failed to connect to database" });
   });
+  mongoose.set('debug', true); // This will log all MongoDB queries in the console
+
 
 // Example Route
 app.get("/", (req, res) => {
@@ -113,10 +117,12 @@ app.get("/admin", protect, (req, res) => {
 
 
 
+
+// Update User Profile
 // Fetch User Profile Route
 app.get('/api/user-profile', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('firstName'); // Only select firstName
+    const user = await User.findById(req.user.id).select('firstName lastName email phone'); // Select all fields you need
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -126,6 +132,104 @@ app.get('/api/user-profile', protect, async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+
+// Update User Profile Route
+app.post('/api/update-profile', protect, async (req, res) => {
+  const { firstName, lastName, email, phone, password, oldPassword } = req.body;
+
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if old password is correct when updating the password
+    if (oldPassword && !(await bcrypt.compare(oldPassword, user.password))) {
+      return res.status(400).json({ message: 'Old password is incorrect' });
+    }
+
+    // Update user profile
+    user.firstName = firstName || user.firstName;
+    user.lastName = lastName || user.lastName;
+    user.email = email || user.email;
+    user.phone = phone || user.phone;
+
+    // If the password is updated, hash the new password and update it
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+    }
+
+    await user.save();
+    res.json({ message: 'Profile updated successfully' });
+
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+
+// Use routes
+app.use('/api/products', productRoutes);
+
+
+app.get('/api/products', async (req, res) => {
+  try {
+    const products = await Product.find(); // Assuming Product is a Mongoose model
+    res.status(200).json(products);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching products' });
+  }
+});
+
+app.get('/api/products/:id', async (req, res) => {
+  const productId = req.params.id;
+  if (!mongoose.isValidObjectId(productId)) {
+    return res.status(400).json({ error: 'Invalid product ID' });
+  }
+
+  const product = await Product.findById(productId);
+  if (!product) {
+    return res.status(404).json({ error: 'Product not found' });
+  }
+
+  res.json(product);
+  
+});
+
+app.put('/api/products/:id', async (req, res) => {
+  const productId = req.params.id;
+
+  if (!mongoose.isValidObjectId(productId)) {
+    return res.status(400).json({ error: 'Invalid product ID' });
+  }
+
+  try {
+    const updatedProduct = await Product.findByIdAndUpdate(
+      productId,
+      {
+        ...req.body, // Spread the request body to update fields
+      },
+      { new: true, runValidators: true } // Return the updated document and validate the data
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+
+    res.status(200).json(updatedProduct);
+  } catch (error) {
+    console.error('Error updating product:', error);
+    res.status(500).json({ error: 'Failed to update product' });
+  }
+});
+
+
+
+
 
 
 // Start server
